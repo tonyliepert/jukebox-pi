@@ -157,6 +157,34 @@ sudo tail /var/log/owntone.log
 | Stream stops between records | Raise `STOP_AFTER_SECONDS` |
 | Hum | Add a ground-loop isolator between the jukebox and the HiFiBerry |
 
+## Playing a music library (optional)
+
+OwnTone is also a music server, so the Pi can play your own music files to
+the same speakers. Put the music on a USB stick, plug it into the Pi and mount
+it **read-only** inside `/srv/music`, which OwnTone already scans. Use the
+stick's UUID from `lsblk -f`:
+
+```bash
+sudo mkdir -p /srv/music/usb
+echo "UUID=XXXX-XXXX  /srv/music/usb  vfat  ro,nofail,utf8,uid=0,gid=0,umask=022,x-systemd.device-timeout=10s  0  0" | sudo tee -a /etc/fstab
+sudo mkdir -p /etc/systemd/system/owntone.service.d
+printf "[Unit]\nAfter=srv-music-usb.mount\n" | sudo tee /etc/systemd/system/owntone.service.d/after-usb.conf
+sudo systemctl daemon-reload && sudo mount /srv/music/usb
+curl -X PUT localhost:3689/api/update          # scan now
+```
+
+- `nofail` lets the Pi boot normally without the stick, and `utf8` keeps
+  accented names such as "König" correct.
+- Use `exfat` or `ntfs3` instead of `vfat` for those formats.
+- Browse and play at **http://jukebox.local:3689**, or use an MPD app such as
+  MALP (Android) or Rigelian (iPhone).
+- After adding music to the stick, plug it back in and click **Update
+  library** on the web page.
+
+A record starting on the jukebox takes over from library music. When the
+jukebox goes quiet, the streamer stops OwnTone only if it's still playing the
+jukebox, so library music started during a record keeps playing.
+
 ## Protecting the SD card (optional)
 
 If the Pi loses power whenever the jukebox is switched off, turn on

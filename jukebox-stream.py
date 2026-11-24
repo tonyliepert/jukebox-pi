@@ -144,8 +144,9 @@ class SpeakerKeeper(threading.Thread):
     During the session: once the speakers are confirmed, back off. If Spotify,
     Alexa or a person takes the speaker or deselects it, leave it alone.
 
-    Session end: tell OwnTone to stop. Otherwise it only pauses, keeping the
-    speaker selected and possibly holding its session open.
+    Session end: if OwnTone is still playing the jukebox, tell it to stop.
+    Otherwise it only pauses, keeping the speaker selected and possibly holding
+    its session open. If someone switched to library music, leave it playing.
 
     Runs in its own thread so a slow API call can never stall the audio.
     """
@@ -185,6 +186,21 @@ class SpeakerKeeper(threading.Thread):
             raw = resp.read()
         return json.loads(raw) if raw else None
 
+    def now_playing(self):
+        """'stopped', 'jukebox' (the pipe is the current track) or 'other'.
+
+        Someone may have switched to music from the library during the
+        session; that must not be stopped when the jukebox goes quiet.
+        """
+        player = self.api("GET", "/api/player")
+        if player.get("state") == "stop":
+            return "stopped"
+        current = player.get("item_id")
+        items = self.api("GET", "/api/queue").get("items", [])
+        if any(i.get("id") == current and i.get("path") == FIFO for i in items):
+            return "jukebox"
+        return "other"
+
     def claim_speakers(self):
         """Select any configured speaker that isn't selected.
 
@@ -215,8 +231,12 @@ class SpeakerKeeper(threading.Thread):
                 self.pending_stop = False
             try:
                 if stop:
-                    self.api("PUT", "/api/player/stop")
-                    log("Stopped OwnTone playback (speakers released)")
+                    playing = self.now_playing()
+                    if playing == "jukebox":
+                        self.api("PUT", "/api/player/stop")
+                        log("Stopped OwnTone playback (speakers released)")
+                    elif playing == "other":
+                        log("OwnTone is playing something else; left it running")
                 if active and not claimed and self.names and self.claim_speakers():
                     with self.lock:
                         if self.active:
