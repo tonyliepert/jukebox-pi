@@ -1,0 +1,15 @@
+[Unit]
+Description=Wurlitzer jukebox live stream into OwnTone
+After=sound.target owntone.service
+Wants=owntone.service
+
+[Service]
+EnvironmentFile=/etc/jukebox-stream.conf
+ExecStart=/usr/bin/python3 /usr/local/bin/jukebox-stream.py
+User=jukebox
+Group=audio
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

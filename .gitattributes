@@ -1,0 +1,3 @@
+# Scripts and config files run on the Pi: keep Linux line endings everywhere.
+* text=auto eol=lf
+*.pdf binary

@@ -1,0 +1,5 @@
+# Personal and unrelated files kept in this folder but not published
+*.png
+invoice-*.pdf
+OMT45_reject_troubleshooting.pdf
+__pycache__/
