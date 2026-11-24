@@ -104,6 +104,21 @@ block = block.lstrip("\n")
 ours = f"\n\t{MARKER}\n" + "".join(
     f"\t{k} = {v}\n" for k, v in settings.items()) + "\n"
 text = text[:start.end()] + ours + block + text[end:]
+
+# Pick an available speaker whenever playback starts with none selected
+# (e.g. library music started from a phone after a reboot).
+text = re.sub(r'^[ \t]*#?[ \t]*speaker_autoselect[ \t]*=.*$',
+              '\tspeaker_autoselect = yes', text, count=1, flags=re.M)
+
+# The Pi has no local speaker: hide OwnTone's "Computer" output so autoselect
+# can only choose network speakers.
+audio = re.search(r'^audio\s*\{', text, re.M)
+if audio:
+    close = text.index('\n}', audio.end())
+    body = re.sub(r'^[ \t]*#?[ \t]*type[ \t]*=[ \t]*"[a-z]*".*$', '\ttype = "disabled"',
+                  text[audio.end():close], count=1, flags=re.M)
+    text = text[:audio.end()] + body + text[close:]
+
 open(path, "w").write(text)
 PY
 

@@ -181,6 +181,11 @@ curl -X PUT localhost:3689/api/update          # scan now
 - After adding music to the stick, plug it back in and click **Update
   library** on the web page.
 
+The installer turns on OwnTone's `speaker_autoselect` and hides its local
+"Computer" output (`type = "disabled"` in the `audio` section). OwnTone
+forgets the selected speaker after a reboot, so this lets library music
+started from a phone pick the network speaker automatically.
+
 A record starting on the jukebox takes over from library music. When the
 jukebox goes quiet, the streamer stops OwnTone only if it's still playing the
 jukebox, so library music started during a record keeps playing.
