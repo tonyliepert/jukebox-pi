@@ -174,3 +174,7 @@ sudo cp /etc/owntone.conf.bak-jukebox /etc/owntone.conf
 sudo cp /boot/firmware/config.txt.bak-jukebox /boot/firmware/config.txt
 sudo apt remove owntone && sudo rm /etc/apt/sources.list.d/owntone.list /usr/share/keyrings/owntone-archive-keyring.gpg
 ```
+
+## License
+
+MIT. See [LICENSE](LICENSE). You are free to use, change and share this project.
