@@ -9,8 +9,8 @@ Built and tested with Edifier S1000W speakers.
 Jukebox DIN → HiFiBerry ADC → jukebox-stream.py → pipe → OwnTone → AirPlay 2 → speakers
 ```
 
-Streaming starts on its own when a record plays and stops after 45 seconds of
-silence. That's long enough to cover the carousel loading the next record.
+Streaming starts on its own when a record plays and stops after 30 seconds of
+silence. Raise `STOP_AFTER_SECONDS` if record changes take longer than that.
 When the jukebox is idle the speakers are free for Spotify, Alexa and so on.
 
 ## Files
@@ -130,7 +130,7 @@ How the streamer handles OwnTone and the speakers:
 | A library song is picked during a record | The record keeps playing and the song is queued right after it. Phone apps such as Rigelian start a tapped song immediately, so the streamer switches back to the record within about a second. Expect a gap of about 2–3 seconds. |
 | Stop is pressed during a record | Respected. The record stays silent in the other room until the next session. |
 | Spotify or Alexa is started during a record | It takes the speaker. The streamer doesn't take it back. |
-| 45 s of silence | The streamer removes the jukebox entry. The next queued song plays, or if nothing is queued OwnTone stops and releases the speakers. OwnTone treats the jukebox as an endless track, so on its own it would just wait. |
+| 30 s of silence | The streamer removes the jukebox entry. The next queued song plays, or if nothing is queued OwnTone stops and releases the speakers. OwnTone treats the jukebox as an endless track, so on its own it would just wait. |
 
 OwnTone's own `pipe_autostart` must stay off. Whenever playback leaves the
 pipe while audio is arriving, autostart clears the whole queue, which wipes
@@ -142,7 +142,7 @@ Edit `/etc/jukebox-stream.conf`, then `sudo systemctl restart jukebox-stream`.
 
 - `STOP_THRESHOLD_DB` (-50): a few dB above the idle hum
 - `START_THRESHOLD_DB` (-40): about 10 dB above that
-- `STOP_AFTER_SECONDS` (45): longer than the longest record change
+- `STOP_AFTER_SECONDS` (30): longer than the longest record change
 - `MODE=always`: stream continuously instead
 
 ## Checking and troubleshooting
