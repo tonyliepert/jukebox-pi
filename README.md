@@ -127,7 +127,7 @@ How the streamer handles the speakers:
 | Jukebox idle | The Pi leaves the speakers alone |
 | A record starts | The streamer selects the speakers, retrying every 5 s until they're connected. After a power cut the speaker often appears on the network a few seconds late, and OwnTone won't pick it up on its own. |
 | Spotify or Alexa is started during a record | It takes the speaker. The streamer doesn't take it back. |
-| 45 s of silence | The streamer stops OwnTone, which releases the speakers. Without this OwnTone only pauses and keeps them. |
+| 45 s of silence | The streamer removes the jukebox entry from OwnTone's queue. If songs were queued during the record, the next one plays. Otherwise OwnTone stops and releases the speakers. OwnTone treats the jukebox as an endless track, so on its own it would just wait. |
 
 ### 3. Start and stop tuning (optional)
 
@@ -186,9 +186,10 @@ The installer turns on OwnTone's `speaker_autoselect` and hides its local
 forgets the selected speaker after a reboot, so this lets library music
 started from a phone pick the network speaker automatically.
 
-A record starting on the jukebox takes over from library music. When the
-jukebox goes quiet, the streamer stops OwnTone only if it's still playing the
-jukebox, so library music started during a record keeps playing.
+A record starting on the jukebox takes over from library music. Songs you
+add to the queue during a record (for example "Add to Queue" in Rigelian)
+play once the jukebox goes quiet. If you switch to library music during a
+record, it keeps playing.
 
 ## Protecting the SD card (optional)
 

@@ -144,9 +144,10 @@ class SpeakerKeeper(threading.Thread):
     During the session: once the speakers are confirmed, back off. If Spotify,
     Alexa or a person takes the speaker or deselects it, leave it alone.
 
-    Session end: if OwnTone is still playing the jukebox, tell it to stop.
-    Otherwise it only pauses, keeping the speaker selected and possibly holding
-    its session open. If someone switched to library music, leave it playing.
+    Session end: remove the jukebox entry from OwnTone's queue, then play the
+    next queued song if there is one, or stop to release the speakers (OwnTone
+    would otherwise wait on the pipe forever). If someone switched to library
+    music, leave it playing.
 
     Runs in its own thread so a slow API call can never stall the audio.
     """
@@ -186,20 +187,38 @@ class SpeakerKeeper(threading.Thread):
             raw = resp.read()
         return json.loads(raw) if raw else None
 
-    def now_playing(self):
-        """'stopped', 'jukebox' (the pipe is the current track) or 'other'.
+    def end_session(self):
+        """Hand OwnTone back to normal use after the jukebox goes quiet.
 
-        Someone may have switched to music from the library during the
-        session; that must not be stopped when the jukebox goes quiet.
+        OwnTone treats the pipe as an endless track: when the record ends it
+        just waits on it and never moves on to the rest of the queue. So:
+        - if OwnTone is playing something else (someone switched to library
+          music), leave it alone;
+        - otherwise remove the jukebox entry from the queue (a new record adds
+          it back), then play the next queued song if there is one, or stop
+          to release the speakers.
         """
         player = self.api("GET", "/api/player")
-        if player.get("state") == "stop":
-            return "stopped"
-        current = player.get("item_id")
         items = self.api("GET", "/api/queue").get("items", [])
-        if any(i.get("id") == current and i.get("path") == FIFO for i in items):
-            return "jukebox"
-        return "other"
+        pipe = [i for i in items if i.get("path") == FIFO]
+        current = player.get("item_id")
+        playing_jukebox = (player.get("state") != "stop"
+                           and any(i.get("id") == current for i in pipe))
+        if player.get("state") != "stop" and not playing_jukebox:
+            log("OwnTone is playing something else; left it running")
+        elif playing_jukebox:
+            pos = next(i["position"] for i in pipe if i["id"] == current)
+            following = [i for i in items
+                         if i.get("position", -1) > pos and i.get("path") != FIFO]
+            if following:
+                self.api("PUT", f"/api/player/play?item_id={following[0]['id']}")
+                log(f"Record finished; playing next in queue: "
+                    f"{following[0].get('artist', '?')} - {following[0].get('title', '?')}")
+            else:
+                self.api("PUT", "/api/player/stop")
+                log("Stopped OwnTone playback (speakers released)")
+        for i in pipe:                  # keep the silent jukebox entry out of the queue
+            self.api("DELETE", f"/api/queue/items/{i['id']}")
 
     def claim_speakers(self):
         """Select any configured speaker that isn't selected.
@@ -231,12 +250,7 @@ class SpeakerKeeper(threading.Thread):
                 self.pending_stop = False
             try:
                 if stop:
-                    playing = self.now_playing()
-                    if playing == "jukebox":
-                        self.api("PUT", "/api/player/stop")
-                        log("Stopped OwnTone playback (speakers released)")
-                    elif playing == "other":
-                        log("OwnTone is playing something else; left it running")
+                    self.end_session()
                 if active and not claimed and self.names and self.claim_speakers():
                     with self.lock:
                         if self.active:
