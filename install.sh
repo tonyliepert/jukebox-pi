@@ -91,7 +91,7 @@ if end is None:
 
 settings = {
     "directories": '{ "%s" }' % music_dir,
-    "pipe_autostart": "true",
+    "pipe_autostart": "false",   # the streamer starts the pipe itself; autostart clears the queue
     "pipe_sample_rate": "44100",
     "pipe_bits_per_sample": "16",
 }

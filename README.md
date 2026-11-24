@@ -77,8 +77,9 @@ over the other two.
    For the standard (non-Pro) DAC+ ADC, use
    `sudo OVERLAY=hifiberry-dacplusadc bash install.sh` instead.
 
-The installer installs OwnTone and turns on the HiFiBerry. It configures OwnTone
-to watch `/srv/music` for live pipes, creates the pipe, adds a `jukebox`
+The installer installs OwnTone and turns on the HiFiBerry. It adds
+`/srv/music` to OwnTone's library with `pipe_autostart = false`, creates the
+pipe, adds a `jukebox`
 system user for the streamer and turns on the service. It backs up
 `/etc/owntone.conf` and `/boot/firmware/config.txt` first, as `*.bak-jukebox`.
 
@@ -120,14 +121,20 @@ names with commas. You can see the names at **http://jukebox.local:3689**.
 Set the volume there too, because the jukebox's own volume knob doesn't affect
 this output.
 
-How the streamer handles the speakers:
+How the streamer handles OwnTone and the speakers:
 
 | Situation | What happens |
 |---|---|
-| Jukebox idle | The Pi leaves the speakers alone |
-| A record starts | The streamer selects the speakers, retrying every 5 s until they're connected. After a power cut the speaker often appears on the network a few seconds late, and OwnTone won't pick it up on its own. |
+| Jukebox idle | The Pi leaves OwnTone and the speakers alone |
+| A record starts | The streamer puts a "jukebox" entry in OwnTone's queue right after whatever is playing and plays it. Nothing already queued is removed. It also selects the speakers, retrying until they're connected, because after a power cut the speaker often appears on the network a few seconds late. |
+| A library song is picked during a record | The record keeps playing and the song is queued right after it. Phone apps such as Rigelian start a tapped song immediately, so the streamer switches back to the record within about a second. Expect a gap of about 2–3 seconds. |
+| Stop is pressed during a record | Respected. The record stays silent in the other room until the next session. |
 | Spotify or Alexa is started during a record | It takes the speaker. The streamer doesn't take it back. |
-| 45 s of silence | The streamer removes the jukebox entry from OwnTone's queue. If songs were queued during the record, the next one plays. Otherwise OwnTone stops and releases the speakers. OwnTone treats the jukebox as an endless track, so on its own it would just wait. |
+| 45 s of silence | The streamer removes the jukebox entry. The next queued song plays, or if nothing is queued OwnTone stops and releases the speakers. OwnTone treats the jukebox as an endless track, so on its own it would just wait. |
+
+OwnTone's own `pipe_autostart` must stay off. Whenever playback leaves the
+pipe while audio is arriving, autostart clears the whole queue, which wipes
+out songs picked during a record.
 
 ### 3. Start and stop tuning (optional)
 
@@ -150,7 +157,7 @@ sudo tail /var/log/owntone.log
 |---|---|
 | `arecord stopped` in the log | HiFiBerry not detected (check `arecord -l` and reboot), or another program such as `--monitor` is using the input |
 | `--monitor` shows about -120 dBFS with music playing | Wrong ADC input selected, or the cable is on pins 3/5 instead of 1/4 |
-| "OwnTone is not reading the pipe" just after boot | Harmless: the streamer started a second before OwnTone. It recovers on its own. |
+| "Couldn't reach OwnTone's API" just after boot | Harmless if it happens once: the streamer started before OwnTone. It retries on its own. |
 | "Waiting for speaker ... to appear" | The speaker is off, or on a different network or VLAN from the Pi (for example a router's separate IoT network) |
 | Music detected but speakers silent | The speaker isn't on its Wi-Fi input, or `SPEAKERS=` doesn't match its name in OwnTone |
 | Stream never stops | The idle hum is above `STOP_THRESHOLD_DB`. Measure it with `--monitor` and raise the threshold. |
@@ -186,10 +193,10 @@ The installer turns on OwnTone's `speaker_autoselect` and hides its local
 forgets the selected speaker after a reboot, so this lets library music
 started from a phone pick the network speaker automatically.
 
-A record starting on the jukebox takes over from library music. Songs you
-add to the queue during a record (for example "Add to Queue" in Rigelian)
-play once the jukebox goes quiet. If you switch to library music during a
-record, it keeps playing.
+A record starting on the jukebox takes over from library music, and the rest
+of the library queue continues after the record. Songs picked during a record
+play once the jukebox goes quiet. The library song that the record
+interrupted isn't resumed.
 
 ## Protecting the SD card (optional)
 
